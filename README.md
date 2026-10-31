@@ -1,110 +1,44 @@
-\# 🛰️ Transportador CLI
+# Secure File Transport (Secure-File-Transport)
 
+A high-assurance, end-to-end file transfer utility engineered for secure peer-to-peer data transmission across network environments.
 
+## 🛡️ Key Features
 
-Uma ferramenta de linha de comandos (CLI) leve, interativa e eficiente em Python para transferência de ficheiros e dados via sockets TCP de ponto a ponto (P2P).
+- **Memory-Optimized Stream Handling:** Compresses targets directly into memory (`io.BytesIO`) using `tar.gz` formats, preventing unnecessary disk I/O bottlenecks.
+- **TCP Socket Streaming:** Utilizes robust stream sockets with configurable chunk sizes (64 KB) for high-throughput performance.
+- **Real-Time Progress Tracking:** Live feedback with percentage and megabyte throughput metrics during transmission and extraction.
+- **Dual Operating Modes:** Functions seamlessly as an active transmitter (Client) or an asynchronous receiver (Server).
+- **CLI & Interactive Support:** Fully operable via standard command-line arguments (`argparse`) or a built-in guided interactive menu.
 
+## 🚀 Architecture & Workflow
 
+1. **Compression Phase:** The client targets a specified file or directory, packaging it in-memory into a compressed tar archive.
+2. **Socket Initialization:** Establishes a reliable TCP connection with the destination listener.
+3. **Stream Transmission:** Data is streamed in structured chunks with real-time progress calculations.
+4. **Extraction Phase:** The server receives the binary stream, reconstructs the buffer, and securely unpacks payloads to the designated output directory.
 
-\## 🚀 Funcionalidades
+## 🛠️ Usage
 
+### Command-Line Interface (CLI)
 
+- **Server Mode (Receiver):**
+  ```bash
+  python3 transport.py --listen --port 4444 --output ./received_files
 
-\- \*\*Menu Interativo:\*\* Interface amigável no terminal para fácil navegação e operação.
+    Client Mode (Sender):
+    Bash
 
-\- \*\*Transferência via Sockets TCP:\*\* Conexão direta e rápida entre máquinas na mesma rede ou via túnel.
+    python3 transport.py --target /path/to/payload --ip <DESTINATION_IP> --port 4444
 
-\- \*\*Tratamento por Chunks:\*\* Leitura e envio de ficheiros otimizados em blocos de memória para suportar ficheiros grandes sem consumo excessivo de RAM.
+Interactive Mode
 
-\- \*\*Suporte a Argumentos de Terminal:\*\* Pode ser executado diretamente via argumentos da CLI para automações e scripts.
-
-\- \*\*Modo Servidor e Cliente:\*\* Capacidade de aguardar conexões de entrada ou iniciar o envio/receção para um nó remoto.
-
-
-
-\---
-
-
-
-\## 🛠️ Requisitos
-
-
-
-\- Python 3.8+
-
-\- Nenhuma biblioteca externa necessária (utiliza apenas bibliotecas nativas como `socket`, `sys`, `os`, `argparse`).
-
-
-
-\---
-
-
-
-\## 📦 Como Usar
-
-
-
-\### 1. Clonar o Repositório
-
-```bash
-
-git clone git@github.com:joeangelo21/transportador.git
-
-cd transportador
-
-
-
-2\. Modo Interativo
-
-
-
-Para abrir o menu interativo, basta executar o script sem argumentos adicionais:
-
+Execute the script without arguments to launch the guided prompt:
 Bash
 
+python3 transport.py
 
+📜 License
 
-python transportador.py
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-
-
-3\. Modo Linha de Comandos (CLI)
-
-
-
-Também podes passar parâmetros diretamente para automatizar tarefas:
-
-
-
-&#x20;   Modo Escuta (Receber Ficheiro):
-
-&#x20;   Bash
-
-
-
-&#x20;   python transportador.py --listen --port 5000 --output ./ficheiro\_recebido.zip
-
-
-
-&#x20;   Modo Envio (Enviar Ficheiro):
-
-&#x20;   Bash
-
-
-
-&#x20;   python transportador.py --send --host 192.168.1.10 --port 5000 --file ./meu\_ficheiro.zip
-
-
-
-🔒 Segurança e Privacidade
-
-
-
-O Transportador foi projetado para operações diretas P2P sem dependência de servidores de terceiros ou serviços na nuvem. Toda a transferência ocorre diretamente entre a origem e o destino configurados.
-
-👨‍💻 Autor
-
-
-
-Desenvolvido por Joelson Angelo (@joeangelo21).
 

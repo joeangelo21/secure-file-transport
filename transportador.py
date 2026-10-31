@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Transportador CLI - Ferramenta de Transferência de Arquivos Ponto a Ponto
-Autor: Joelson Angelo (joeangelo21)
+Secure File Transport CLI - Peer-to-Peer File Transfer Utility
+Author: Joelson Angelo (joeangelo21)
 """
 
 import os
@@ -13,134 +13,132 @@ import argparse
 
 CHUNK_SIZE = 65536  # 64 KB
 
-def modo_servidor(porta, pasta_destino="."):
-    """Modo receptor: escuta conexões e recebe o pacote tar.gz."""
-    if not os.path.exists(pasta_destino):
-        os.makedirs(pasta_destino)
+def server_mode(port: int, destination_dir: str = ".") -> None:
+    """Receiver mode: listens for incoming connections and extracts the tar.gz payload."""
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
 
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(('0.0.0.0', porta))
+            s.bind(('0.0.0.0', port))
             s.listen(1)
-            print(f"\n[*] Servidor aguardando conexão em 0.0.0.0:{porta}...")
+            print(f"\n[*] Server listening on 0.0.0.0:{port}...")
 
             conn, addr = s.accept()
-            print(f"[+] Conexão estabelecida com {addr[0]}:{addr[1]}")
+            print(f"[+] Connection established with {addr[0]}:{addr[1]}")
 
             buffer = io.BytesIO()
             with conn:
-                bytes_recebidos = 0
+                received_bytes = 0
                 while True:
-                    dados = conn.recv(CHUNK_SIZE)
-                    if not dados:
+                    data = conn.recv(CHUNK_SIZE)
+                    if not data:
                         break
-                    buffer.write(dados)
-                    bytes_recebidos += len(dados)
-                    print(f"\r[*] Recebendo: {bytes_recebidos / (1024*1024):.2f} MB", end="")
+                    buffer.write(data)
+                    received_bytes += len(data)
+                    print(f"\r[*] Receiving payload: {received_bytes / (1024*1024):.2f} MB", end="")
 
-                print("\n[+] Transferência concluída. Extraindo arquivos...")
+                print("\n[+] Transfer complete. Extracting archives...")
                 buffer.seek(0)
                 try:
                     with tarfile.open(fileobj=buffer, mode="r:gz") as tar:
-                        tar.extractall(path=pasta_destino)
-                    print(f"[+] Arquivo(s) extraído(s) com sucesso em '{os.path.abspath(pasta_destino)}'!")
+                        tar.extractall(path=destination_dir)
+                    print(f"[+] Payload successfully extracted to '{os.path.abspath(destination_dir)}'!")
                 except Exception as e:
-                    print(f"\n[!] Erro ao extrair pacote: {e}")
+                    print(f"\n[!] Extraction error: {e}")
 
     except KeyboardInterrupt:
-        print("\n[!] Servidor interrompido pelo usuário.")
+        print("\n[!] Server interrupted by user.")
     except Exception as e:
-        print(f"\n[!] Erro no servidor: {e}")
+        print(f"\n[!] Server error: {e}")
 
-def modo_cliente(arquivo_alvo, ip_destino, porta):
-    """Modo emissor: compacta o alvo em memória e envia via socket."""
-    if not os.path.exists(arquivo_alvo):
-        print(f"\n[!] Erro: O arquivo ou pasta '{arquivo_alvo}' não existe.")
+def client_mode(target_path: str, destination_ip: str, port: int) -> None:
+    """Sender mode: compresses target in memory and streams via socket."""
+    if not os.path.exists(target_path):
+        print(f"\n[!] Error: Target path '{target_path}' does not exist.")
         return
 
-    print(f"\n[*] Compactando '{arquivo_alvo}' em memória...")
+    print(f"\n[*] Compressing '{target_path}' in memory...")
     buffer = io.BytesIO()
     try:
         with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
-            tar.add(arquivo_alvo, arcname=os.path.basename(arquivo_alvo))
+            tar.add(target_path, arcname=os.path.basename(target_path))
     except Exception as e:
-        print(f"[!] Erro ao compactar: {e}")
+        print(f"[!] Compression error: {e}")
         return
 
-    tamanho_total = buffer.tell()
+    total_size = buffer.tell()
     buffer.seek(0)
-    print(f"[+] Pacote gerado: {tamanho_total / (1024*1024):.2f} MB")
+    print(f"[+] Payload generated: {total_size / (1024*1024):.2f} MB")
 
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            print(f"[*] Conectando ao destino {ip_destino}:{porta}...")
-            s.connect((ip_destino, porta))
-            
-            bytes_enviados = 0
+            print(f"[*] Connecting to destination {destination_ip}:{port}...")
+            s.connect((destination_ip, port))
+
+            sent_bytes = 0
             while chunk := buffer.read(CHUNK_SIZE):
                 s.sendall(chunk)
-                bytes_enviados += len(chunk)
-                progresso = (bytes_enviados / tamanho_total) * 100
-                print(f"\r[*] Transportando: {progresso:.1f}% ({bytes_enviados / (1024*1024):.2f} MB)", end="")
-            
-            print(f"\n[+] '{arquivo_alvo}' enviado com sucesso!")
+                sent_bytes += len(chunk)
+                progress = (sent_bytes / total_size) * 100
+                print(f"\r[*] Transmitting: {progress:.1f}% ({sent_bytes / (1024*1024):.2f} MB)", end="")
+
+            print(f"\n[+] '{target_path}' successfully transmitted!")
 
     except ConnectionRefusedError:
-        print("\n[!] Erro: Conexão recusada. O servidor no IP destino está rodando e com a porta aberta?")
+        print("\n[!] Error: Connection refused. Verify if the target listener is active and the port is open.")
     except Exception as e:
-        print(f"\n[!] Erro na transferência: {e}")
+        print(f"\n[!] Transmission error: {e}")
 
-def menu_interativo():
-    """Menu amigável via terminal quando o script é executado sem argumentos."""
+def interactive_menu() -> None:
+    """Terminal interactive menu when executed without arguments."""
     print("=" * 50)
-    print("        TRANSPORTADOR DE ARQUIVOS P2P")
+    print("        SECURE FILE TRANSPORT - P2P")
     print("=" * 50)
-    print("[ 1 ] Enviar arquivo/pasta (Modo Cliente)")
-    print("[ 2 ] Aguardar/Receber arquivo (Modo Servidor)")
+    print("[ 1 ] Send file or directory (Client Mode)")
+    print("[ 2 ] Listen and receive payload (Server Mode)")
     print("=" * 50)
-    
-    opcao = input("Escolha uma opção (1 ou 2): ").strip()
 
-    if opcao == '1':
-        alvo = input("\n[?] Qual o arquivo ou pasta para enviar?: ").strip('"\' ')
-        ip = input("[?] Para qual IP você quer transportar?: ").strip()
-        porta_str = input("[?] Porta de destino (Padrão 4444): ").strip()
-        porta = int(porta_str) if porta_str else 4444
+    option = input("Select an option (1 or 2): ").strip()
 
-        if alvo and ip:
-            modo_cliente(alvo, ip, porta)
+    if option == '1':
+        target = input("\n[?] Target file or directory to send: ").strip('"\' ')
+        ip = input("[?] Destination IP address: ").strip()
+        port_str = input("[?] Destination port (Default: 4444): ").strip()
+        port = int(port_str) if port_str else 4444
+
+        if target and ip:
+            client_mode(target, ip, port)
         else:
-            print("[!] Erro: O arquivo e o IP do destino são obrigatórios.")
+            print("[!] Error: Target path and destination IP are required.")
 
-    elif opcao == '2':
-        porta_str = input("\n[?] Em qual porta deseja escutar? (Padrão 4444): ").strip()
-        porta = int(porta_str) if porta_str else 4444
-        destino = input("[?] Pasta para salvar o arquivo recebido (Padrão '.'): ").strip()
-        destino = destino if destino else "."
+    elif option == '2':
+        port_str = input("\n[?] Listen port (Default: 4444): ").strip()
+        port = int(port_str) if port_str else 4444
+        destination = input("[?] Output directory for received files (Default '.'): ").strip()
+        destination = destination if destination else "."
 
-        modo_servidor(porta, destino)
+        server_mode(port, destination)
     else:
-        print("[!] Opção inválida. Encerrando.")
+        print("[!] Invalid option. Exiting.")
 
-def main():
-    parser = argparse.ArgumentParser(description="Transportador CLI - Transferência de arquivos via Socket TCP")
-    parser.add_argument("-l", "--listen", action="store_true", help="Ativa o modo servidor (receber)")
-    parser.add_argument("-t", "--target", type=str, help="Arquivo ou pasta a ser enviada")
-    parser.add_argument("-i", "--ip", type=str, help="IP do servidor de destino")
-    parser.add_argument("-p", "--port", type=int, default=4444, help="Porta TCP (padrão: 4444)")
-    parser.add_argument("-o", "--output", type=str, default=".", help="Pasta de saída para arquivos recebidos")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Secure File Transport CLI - TCP Socket File Transfer Utility")
+    parser.add_argument("-l", "--listen", action="store_true", help="Enable server mode (receiver)")
+    parser.add_argument("-t", "--target", type=str, help="Target file or folder to transmit")
+    parser.add_argument("-i", "--ip", type=str, help="Destination server IP address")
+    parser.add_argument("-p", "--port", type=int, default=4444, help="TCP port (default: 4444)")
+    parser.add_argument("-o", "--output", type=str, default=".", help="Output directory for received payloads")
 
     args = parser.parse_args()
 
-    # Se a pessoa passou argumentos via terminal (ex: -t arquivo -i 192.168.1.5)
     if args.listen:
-        modo_servidor(args.port, args.output)
+        server_mode(args.port, args.output)
     elif args.target and args.ip:
-        modo_cliente(args.target, args.ip, args.port)
+        client_mode(args.target, args.ip, args.port)
     else:
-        # Se rodou só 'python transportador.py', entra no modo interativo
-        menu_interativo()
+        interactive_menu()
 
 if __name__ == "__main__":
     main()
